@@ -61,7 +61,9 @@ contract MultiSigWallet {
         );
         for (uint256 i = 0; i < _owners.length; i++) {
             address owner = _owners[i];
+
             require(owner != address(0), "invalid owner");
+            require(!isOwner[owner], "owner not unique");
             isOwner[owner] = true;
             owners.push(owner);
         }
