@@ -75,7 +75,7 @@ contract MultiSigWallet {
         emit Deposit(msg.sender, msg.value, address(this).balance);
     }
 
-    // receive() external payable {}
+    receive() external payable {}
 
     function submitTransaction(
         address _to,
