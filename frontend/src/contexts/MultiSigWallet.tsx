@@ -86,6 +86,12 @@ type Action = Set|UpdateBalance|AddTx|UpdateTx;
 
 function reducer(state: State = INITIAL_STATE, action: Action){
     switch(action.type){
+        case SET: {
+            return {
+                ...state,
+                ...action.data,
+            };
+        }
         default:
             return state;
     }
@@ -171,17 +177,31 @@ export const Provider: React.FC<ProviderProps> = ({children}) => {
                {children}
             </MultiSigWalletContext.Provider>
              );
-            };
+    };
 
-            export function Updater(){
-                const {
-                    state: { web3, account}, 
-                } = useWeb3Context();
+export function Updater(){
+    const {
+            state: { web3, account}, 
+          } = useWeb3Context();
              
-                const {state, set} = useMultiSigWalletContext(); 
+    const {state, set} = useMultiSigWalletContext(); 
 
-                return null;
-            }
+    useEffect(() => {
+        async function get(web3: Web3, account: string){ 
+            try{
+                const data = await getMultiSigWallet(web3, account);
+                set(data);
+            }catch(error){
+             console.error(error);
+            }  
+        }
+        if (web3) {
+            get(web3, account);
+        }
+        }, [web3])
+
+        return null;
+    }
 
 // } 
 

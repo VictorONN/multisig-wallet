@@ -2,6 +2,7 @@ import Web3 from 'web3';
 import TruffleContract from '@truffle/contract';
 import multiSigWalletTruffle from '../build/contracts/MultiSigWallet.json';
 import BN from 'bn.js';
+import { callbackify } from 'util';
 
 
 //@ts-ignore
@@ -62,8 +63,8 @@ for (let i=1; i <= 10; i++){
         balance,
         owners,
         numConfirmationsRequired: numConfirmationsRequired.toNumber(), 
-        transactionCount: 0,
-        transactions: [],
+        transactionCount: transactionCount.toNumber(),
+        transactions,
     };
 }
 
@@ -73,12 +74,140 @@ export async function deposit(
     params: {
         value: BN;
     }
-){}
+){
+    MultiSigWallet.setProvider(web3.currentProvider);
+    const multiSig = await MultiSigWallet.deployed();
+
+    await multiSig.sendTransaction({
+        from: account,
+        value: params.value
+    })
+}
 
 export async function submitTx(
     web3: Web3,
     account: string, 
     params: {
         to: string;
+        //NOTE: error when passing BN type, so pass string
+        value: string;
+        data: string;
     }
-)
+){
+    const{ to, value, data } = params;
+
+    MultiSigWallet.setProvider(web3.currentProvider);
+    const multiSig = await MultiSigWallet.deployed();
+
+    await multiSig.submitTransaction(to, value, data, { from: account,});
+}
+
+export async function confirmTx(
+    web3: Web3, 
+    account: string, 
+    params: { txIndex: number;}
+){
+    const {txIndex} = params;
+
+    MultiSigWallet.setProvider(web3.currentProvider);
+    const multiSig = await MultiSigWallet.deployed();
+
+    await multiSig.confirmTransaction(txIndex, { from: account, });
+}
+
+export async function revokeConfirmation(
+    web3: Web3, 
+    account: string,
+    params: {
+        txIndex: number;
+    }
+){
+    const {txIndex} = params;
+
+    MultiSigWallet.setProvider(web3.currentProvider);
+    const multiSig = await MultiSigWallet.deployed();
+
+    await multiSig.revokeConfirmation(txIndex, {
+        from: account,
+    });
+}
+
+export async function executeTx(
+    web3: Web3, 
+    account: string, 
+    params: {
+        txIndex: number;
+    }
+){
+
+}
+
+export function subscribe(
+    web3: Web3, 
+    address: string, 
+    callback: (error: Error | null, log: Log | null) =>  void){
+     const multiSig = new web3.eth.Contract(MultiSigWallet.abi, address);
+
+     const res = multiSig.events.allEvents(
+         (error: Error, log: Log) => {
+            if(error) {
+                callback(error, null);
+            }else if (log) {
+                callback(null, log);
+            }
+         });
+
+    return () => res.unsubscribe();
+}
+
+interface Deposit {
+    event: "Deposit";
+    returnValues: {
+        sender: string;
+        amount: string;
+        balance: string;
+    };
+}
+
+interface SubmitTransaction {
+    event: "SubmitTransaction";
+    returnValues: {
+        owner: string;
+        txIndex: string;
+        to: string;
+        value: string;
+        data: string;
+    };
+}
+
+interface ConfirmTransaction {
+    event: "ConfirmTransaction";
+    returnValues: {
+        owner: string;
+        txIndex: string;
+    };
+    }
+
+interface RevokeConfirmation {
+    event: "RevokeConfirmation";
+    returnValues: {
+        owner: string;
+        txIndex: string;
+    };
+}
+
+interface ExecuteTransaction {
+    event: "ExecuteTransaction";
+    returnValues: {
+        owner: string;
+        txIndex: string;
+    }
+}
+
+type Log =
+| Deposit
+| SubmitTransaction
+| ConfirmTransaction
+| RevokeConfirmation
+| ExecuteTransaction;
+
